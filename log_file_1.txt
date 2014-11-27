@@ -1,0 +1,2 @@
+21.11.2014 - 22:34:23
+initialised process_manager object 1 - 0018F638
