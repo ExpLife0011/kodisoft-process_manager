@@ -478,10 +478,10 @@ void process_manager::full_clear(){
 	locker.lock();
 	mon_thread.process_forse_stop(true);
 	mon_thread.terminate_thread();
-	mon_thread.ProcStart = function<void()>();
-	mon_thread.ProcCrash = function<void()>();
-	mon_thread.ProcEnded = function<void()>();
-	mon_thread.ProcManuallyStopped = function<void()>();
+	mon_thread.ProcStart = move(function<void()>());
+	mon_thread.ProcCrash = move(function<void()>());
+	mon_thread.ProcEnded = move(function<void()>());
+	mon_thread.ProcManuallyStopped = move(function<void()>());
 	mon_thread.last_exit_code = 0;
 	mon_thread.path.clear();
 	mon_thread.arguments.clear();
@@ -530,7 +530,7 @@ bool process_manager::reset_on_proc_start_function(bool wait) {
 		mon_thread.func_locker.lock();
 	else if (!mon_thread.func_locker.try_lock())
 		return false;
-	mon_thread.ProcStart = function<void()>();
+	mon_thread.ProcStart = move(function<void()>());
 	mon_thread.func_locker.unlock();
 	return true;
 }
@@ -540,7 +540,7 @@ bool process_manager::reset_on_proc_crash_function(bool wait) {
 		mon_thread.func_locker.lock();
 	else if (!mon_thread.func_locker.try_lock())
 		return false;
-	mon_thread.ProcCrash = function<void()>();
+	mon_thread.ProcCrash = move(function<void()>());
 	mon_thread.func_locker.unlock();
 	return true;
 }
@@ -549,7 +549,7 @@ bool process_manager::reset_on_proc_end_function(bool wait) {
 		mon_thread.func_locker.lock();
 	else if (!mon_thread.func_locker.try_lock())
 		return false;
-	mon_thread.ProcEnded = function<void()>();
+	mon_thread.ProcEnded = move(function<void()>());
 	mon_thread.func_locker.unlock();
 	return true;
 }
@@ -558,7 +558,7 @@ bool process_manager::reset_on_proc_manual_stop_function(bool wait) {
 		mon_thread.func_locker.lock();
 	else if (!mon_thread.func_locker.try_lock())
 		return false;
-	mon_thread.ProcManuallyStopped = function<void()>();
+	mon_thread.ProcManuallyStopped = move(function<void()>());
 	mon_thread.func_locker.unlock();
 	return true;
 }
