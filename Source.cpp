@@ -16,36 +16,26 @@ void flush(){
 }
 
 void func(){
-	cout << "lalka started" << endl;
+	cout << "process started" << endl;
 }
 
 using namespace std;
 
-
-int main(){
-//	process_manager proc1;
-//	proc1.open_process(3936);
-	get_cmd_line(3328);
-	cin.get();
-	return 0;
-}
-
-/*
 int main(){
 	process_manager proc1;
 	function<void()> f(func);
 	proc1.load_on_proc_start_function(f);
-	proc1.load_path_args(TEXT("d:\\test.exe"), TEXT("1 2 3 4 5"));
-	proc1.start();
-	chrono::seconds t(1);
+	proc1.open_process(7828); //was using it on windows taskmanager 
+	chrono::seconds t(5);
 	this_thread::sleep_for(t);
+	proc1.reset_on_proc_start_function();
 	logger log("new.txt");
 	proc1.change_log(log);
 	flush();
 	cin.get();
 	return 0;
 }
-*/
+
 
 /*
 int main(){

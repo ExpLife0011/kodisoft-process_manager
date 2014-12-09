@@ -5,13 +5,13 @@ unsigned int _stdcall monitoring_function(void* ptr){
 	DWORD wait_result = 0;
 	DWORD end_result = 0;
 	monitoring_thread* mon_thr = reinterpret_cast<monitoring_thread*>(ptr);
-	if (mon_thr->proc_info.dwProcessId != NULL){
 
-	}
-	else if (!mon_thr->start_process()){
-		mon_thr->log.log_message("cannot start process");
-		mon_thr->monitoring = false;
-		_endthreadex(1);
+	if (!mon_thr->process_up){
+		if (!mon_thr->start_process()){
+			mon_thr->log.log_message("cannot start process");
+			mon_thr->monitoring = false;
+			_endthreadex(1);
+		}
 	}
 
 	while (mon_thr->process_up){
@@ -53,6 +53,9 @@ unsigned int _stdcall monitoring_function(void* ptr){
 						}
 						mon_thr->rebooting = false;
 				}
+				break;
+			case WAIT_FAILED:
+				mon_thr->log.log_current_time_message("WaitForMultipleObjects failed");
 				break;
 		}
 	}
@@ -314,6 +317,8 @@ bool monitoring_thread::terminate_thread(){
 }
 
 bool monitoring_thread::start_process(){
+	on_start();
+
 	STARTUPINFO sinfo;
 	PROCESS_INFORMATION pinfo;
 
@@ -325,8 +330,6 @@ bool monitoring_thread::start_process(){
 		log.log_current_time_message("failed to create process with error - " + to_string(GetLastError()) + '\n');
 		return false;
 	}
-
-	on_start();
 
 	proc_info = pinfo;
 
@@ -357,60 +360,6 @@ bool monitoring_thread::process_forse_stop(bool reset){
 	process_up = false;
 	return true;
 }
-
-
-///tmp
-/*
-bool monitoring_thread::open_process(const DWORD& id){
-	if (process_up)
-		throw(excepts("trying to open process when another process is being monitored"));
-
-	HANDLE process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | READ_CONTROL | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_CREATE_THREAD, FALSE, id);
-	if (process_handle == NULL){
-		log.lock_for_continious_writing();
-		log.get_log() << "OpenProcess failed with error - " << GetLastError() << endl;
-		log.unlock();
-		return false;
-	}
-	wchar_t str[MAX_PATH];
-	DWORD size;
-	if (QueryFullProcessImageName(process_handle, NULL, str, &size) == 0){
-		log.lock_for_continious_writing();
-		log.get_log() << "QueryFullProcessImageName failed with error - " << GetLastError() << endl;
-		log.unlock();
-		CloseHandle(process_handle);
-		return false;
-	}
-	process_up = true;
-	wstring tmp;
-	HANDLE thread_handle = CreateRemoteThread(process_handle, NULL, NULL, getting_arguments,static_cast<void*>(&tmp),NULL,NULL);
-	if (thread_handle == NULL){
-		log.lock_for_continious_writing();
-		log.get_log() << "CreateRemoteThread failed with error - " << GetLastError() << endl;
-		log.unlock();
-		return false;
-	}
-
-	DWORD result = WaitForSingleObject(thread_handle, wait_time);
-	switch (result){
-		case WAIT_OBJECT_0:
-			proc_info.dwProcessId = id;
-			proc_info.hProcess = process_handle;
-			break;
-		case WAIT_TIMEOUT:
-			log.lock_for_continious_writing();
-			log.get_log() << "Failed to get command line arguments" << endl;
-			log.unlock();
-			break;
-		case WAIT_FAILED:
-			log.lock_for_continious_writing();
-			log.get_log() << "WaitForSingleObject failed with error - " << GetLastError() << endl;
-			log.unlock();
-			break;
-	}
-
-}
-*/
 
 
 ////////////////////////////////////////////////////////////////
@@ -448,21 +397,24 @@ process_manager::~process_manager(){
 		mon_thread.log.close();
 }
 
-bool process_manager::load_path_args(const wstring& path_in, const wstring& arguments_in){
-	
+bool process_manager::load_path_args(const wstring& path_in, const wstring& arguments_in, bool lock){
 	if (mon_thread.process_up || mon_thread.monitoring || path_in.empty())
 		return false;
-	locker.lock();
+	if (lock)
+		locker.lock();
 	mon_thread.path = path_in;
 	mon_thread.arguments = arguments_in;
-	locker.unlock();
+	if (lock)
+		locker.unlock();
 	return true;
 }
 
-bool process_manager::start(){
-	locker.lock();
+bool process_manager::start(bool lock){
+	if (lock)
+		locker.lock();
 	bool result = mon_thread.start_thread();
-	locker.unlock();
+	if (lock)
+		locker.unlock();
 	return result;
 }
 
@@ -474,8 +426,22 @@ int process_manager::get_process_state(){
 	return PM_ENDED;
 }
 
-void process_manager::full_clear(){
-	locker.lock();
+void process_manager::clear_process_info(bool lock){
+	if (lock)
+		locker.lock();
+	mon_thread.process_forse_stop(true);
+	mon_thread.terminate_thread();
+	mon_thread.last_exit_code = 0;
+	mon_thread.path.clear();
+	mon_thread.arguments.clear();
+	if(lock)
+		locker.unlock();
+}
+
+
+void process_manager::full_clear(bool lock){
+	if(lock)
+		locker.lock();
 	mon_thread.process_forse_stop(true);
 	mon_thread.terminate_thread();
 	mon_thread.ProcStart = move(function<void()>());
@@ -485,7 +451,8 @@ void process_manager::full_clear(){
 	mon_thread.last_exit_code = 0;
 	mon_thread.path.clear();
 	mon_thread.arguments.clear();
-	locker.unlock();
+	if (lock)
+		locker.unlock();
 }
 
 bool process_manager::load_on_proc_start_function(function<void()>& func, bool wait){
@@ -563,41 +530,47 @@ bool process_manager::reset_on_proc_manual_stop_function(bool wait) {
 	return true;
 }
 
-int process_manager::open_process(DWORD id){
-	if (mon_thread.process_up)
+bool process_manager::open_process(DWORD id){
+	locker.lock();
+	if (mon_thread.process_up){
+		locker.unlock();
 		throw(excepts("trying to open process when another process is being monitored"));
+	}
 
-	HANDLE process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD, FALSE, id);
+	HANDLE process_handle = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_CREATE_THREAD, FALSE, id);
 	if (process_handle == NULL){
-		mon_thread.log << "OpenProcess failed with error - " << GetLastError() << "\n";
+		mon_thread.log.log_current_time_message("OpenProcess failed");
+		locker.unlock();
 		return false;
 	}
 	wchar_t str[MAX_PATH];
 	DWORD size=MAX_PATH;
+
 	if (QueryFullProcessImageName(process_handle, 0, str, &size) == 0){
-		mon_thread.log << "QueryFullProcessImageName failed with error - " << GetLastError() << "\n";
+		mon_thread.log.log_current_time_message("QueryFullProcessImageName failed");
 		CloseHandle(process_handle);
+		locker.unlock();
 		return false;
 	}
-	mon_thread.process_up = true;
-
-	/*
-	HMODULE lib = NULL;
-	FARPROC func;
-	lib = LoadLibrary(TEXT("Ntdll"));
-	func = GetProcAddress(lib, "NtQueryInformationProcess");
-
-
 	
-	NTSTATUS stat;
-	PROCESS_BASIC_INFORMATION pbi;
-	PEB peb;
-	PVOID pvoid = nullptr;
-	DWORD bytes_needed = 0;
-	stat = (FUNC(func))(process_handle, ProcessBasicInformation, &pbi, sizeof(pbi), &bytes_needed);
-	int result = 0;
-	result = FreeLibrary(lib);
-	*/
+	wstring tmp;
+	try{
+		get_cmd_line(id, tmp);
+	}
+	catch (excepts ex){
+		mon_thread.log.log_current_time_message("failed to get cmd arguments");
+		clear_process_info(false);
+		locker.unlock();
+		return false;
+	}
+	
+	ZeroMemory(&mon_thread.proc_info, sizeof(mon_thread.proc_info));
+	mon_thread.proc_info.dwProcessId = id;
+	mon_thread.proc_info.hProcess = process_handle;
+	load_path_args(str, tmp, false);
+	mon_thread.process_up = true;
+	start(false);
 
-	return 0;
+	locker.unlock();
+	return true;
 }

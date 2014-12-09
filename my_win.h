@@ -2,6 +2,9 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <tchar.h>
+#include <string>
+
+using namespace std;
 
 // NtQueryInformationProcess for pure 32 and 64-bit processes
 typedef NTSTATUS(NTAPI *_NtQueryInformationProcess)(
@@ -66,4 +69,4 @@ typedef enum _PROCESSINFOCLASS {
 	ProcessBreakOnTermination = 29
 } PROCESSINFOCLASS;
 
-int get_cmd_line(DWORD dwId);
+void get_cmd_line(DWORD dwId, wstring& out);

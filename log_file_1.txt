@@ -1,2 +1,16 @@
-21.11.2014 - 22:34:23
-initialised process_manager object 1 - 0018F638
+9.12.2014 - 18:10:21
+initialised process_manager object 1 - 0042FC68
+9.12.2014 - 18:10:24
+process crashed with code - 1
+9.12.2014 - 18:10:24
+Created process with id - 7908
+Hadle - 00000248
+Main thread id - 7728
+Main thread handle - 00000244
+9.12.2014 - 18:10:25
+process crashed with code - 1
+9.12.2014 - 18:10:26
+Created process with id - 8152
+Hadle - 00000250
+Main thread id - 4452
+Main thread handle - 00000248

@@ -147,16 +147,17 @@ public:
 	//use it carefully for monitoring mutex only
 	mutex&					get_thread_mutex() { return mon_thread.locker;};
 
-	bool					load_path_args(const wstring& path, const wstring& arguments);
+	bool					load_path_args(const wstring& path, const wstring& arguments, bool lock = true);
 
 	
-	bool					start();
+	bool					start(bool lock = true);
 	BOOL					force_stop() { return SetEvent(mon_thread.force_stop_event); };
 	int						get_process_state();
-	void					full_clear();
+	void					clear_process_info(bool lock = true);
+	void					full_clear(bool lock = true);
 
 	//testing
-	int						open_process(DWORD id);
+	bool					open_process(DWORD id);
 
 	bool					load_on_proc_start_function(function<void()>& func, bool wait = false);
 	bool					load_on_proc_crash_function(function<void()>& func, bool wait = false);

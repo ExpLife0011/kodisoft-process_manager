@@ -17,6 +17,6 @@ excepts::~excepts()
 {
 }
 
-string excepts::msg_view(){
+string& excepts::msg_view(){
 	return message;
 }

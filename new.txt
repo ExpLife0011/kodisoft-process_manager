@@ -1,0 +1,84 @@
+9.12.2014 - 18:10:26
+process crashed with code - 1
+9.12.2014 - 18:10:27
+Created process with id - 7820
+Hadle - 0000022C
+Main thread id - 7780
+Main thread handle - 00000250
+9.12.2014 - 18:10:28
+process crashed with code - 1
+9.12.2014 - 18:10:28
+Created process with id - 7944
+Hadle - 00000258
+Main thread id - 5932
+Main thread handle - 0000022C
+9.12.2014 - 18:10:31
+process crashed with code - 1
+9.12.2014 - 18:10:31
+Created process with id - 3592
+Hadle - 0000025C
+Main thread id - 7624
+Main thread handle - 00000258
+9.12.2014 - 18:10:31
+process crashed with code - 1
+9.12.2014 - 18:10:31
+Created process with id - 7796
+Hadle - 00000260
+Main thread id - 7696
+Main thread handle - 0000025C
+9.12.2014 - 18:10:32
+process crashed with code - 1
+9.12.2014 - 18:10:32
+Created process with id - 7000
+Hadle - 00000264
+Main thread id - 7268
+Main thread handle - 00000260
+9.12.2014 - 18:10:34
+process crashed with code - 1
+9.12.2014 - 18:10:34
+Created process with id - 3124
+Hadle - 00000268
+Main thread id - 4644
+Main thread handle - 00000264
+9.12.2014 - 18:10:35
+process crashed with code - 1
+9.12.2014 - 18:10:35
+Created process with id - 7968
+Hadle - 0000026C
+Main thread id - 7824
+Main thread handle - 00000268
+9.12.2014 - 18:10:36
+process crashed with code - 1
+9.12.2014 - 18:10:36
+Created process with id - 4144
+Hadle - 00000270
+Main thread id - 5924
+Main thread handle - 0000026C
+9.12.2014 - 18:10:41
+process crashed with code - 1
+9.12.2014 - 18:10:41
+Created process with id - 8232
+Hadle - 00000274
+Main thread id - 8236
+Main thread handle - 00000270
+9.12.2014 - 18:10:42
+process crashed with code - 1
+9.12.2014 - 18:10:42
+Created process with id - 8336
+Hadle - 00000278
+Main thread id - 8340
+Main thread handle - 00000274
+9.12.2014 - 18:10:43
+process crashed with code - 1
+9.12.2014 - 18:10:43
+Created process with id - 8444
+Hadle - 0000027C
+Main thread id - 8448
+Main thread handle - 00000278
+9.12.2014 - 18:10:44
+process crashed with code - 1
+9.12.2014 - 18:10:44
+Created process with id - 8564
+Hadle - 00000280
+Main thread id - 8568
+Main thread handle - 0000027C

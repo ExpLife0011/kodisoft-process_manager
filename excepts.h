@@ -10,7 +10,7 @@ public:
 	excepts(const string& str);
 	excepts(const excepts& exc);
 	~excepts();
-	string msg_view();
+	string& msg_view();
 private:
 	string message;
 };
