@@ -51,7 +51,7 @@ public:
 	operator bool(){ return is_open(); };
 	bool		close(bool lock = true);
 	
-	bool		log_current_time(bool lock = true, bool owned = false);
+	bool		log_current_time(bool lock = true, bool owned = true);
 	bool		log_message(const string& message, bool lock = true);
 	bool		log_current_time_message(const string& message, bool lock = true);
 
@@ -73,6 +73,8 @@ public:
 	};
 	
 private:
+	//hide copy constructor
+	logger(const logger& l);
 	ofstream& get_log(){ return log; };
 	//for swap
 	ofstream	log;
