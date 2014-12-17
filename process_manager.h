@@ -83,7 +83,6 @@ private:
 	HANDLE					force_stop_event;
 	PROCESS_INFORMATION		proc_info;
 	DWORD					last_exit_code;
-	mutex					locker;
 	mutex					func_locker;
 	function<void()>		ProcStart;
 	function<void()>		ProcCrash;
@@ -111,9 +110,6 @@ public:
 	DWORD					get_process_id() const { return mon_thread.proc_info.dwProcessId; };
 	wstring					get_current_path() { return mon_thread.path; };
 	wstring					get_current_arguments() { return mon_thread.arguments; };
-
-	//use it carefully for monitoring mutex only
-	mutex&					get_thread_mutex() { return mon_thread.locker;};
 
 	bool					load_path_args(const wstring& path, const wstring& arguments, bool lock = true);
 
