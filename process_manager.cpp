@@ -5,61 +5,67 @@ unsigned int _stdcall monitoring_function(void* ptr){
 	DWORD wait_result = 0;
 	DWORD end_result = 0;
 	monitoring_thread* mon_thr = reinterpret_cast<monitoring_thread*>(ptr);
+	struct bools{
+		bool process_up;
+		bool rebooting;
+		bool monitoring;
+	} *check;
+	check = reinterpret_cast<bools*>(ptr);
 
-	if (!mon_thr->process_up){
+	if (!mon_thr->is_process_up()){
 		if (!mon_thr->start_process()){
-			mon_thr->log.log_message("cannot start process");
-			mon_thr->monitoring = false;
+			mon_thr->log_time_message("cannot start process");
+			check->monitoring = false;
 			_endthreadex(1);
 		}
 	}
 
-	while (mon_thr->process_up){
-		wait_result = WaitForMultipleObjects(3, &mon_thr->terminate_thread_event, FALSE, INFINITE);
+	while (mon_thr->is_process_up()){
+		wait_result = mon_thr->wait_for_event();
 		switch (wait_result){
 			case WAIT_OBJECT_0:
-				mon_thr->log.log_current_time_message("thread terminated without process terminating");
+				mon_thr->log_time_message("thread terminated without process terminating");
 				break;
 
 			case WAIT_OBJECT_0+1:
 				mon_thr->process_forse_stop(true);
 				mon_thr->on_force_stop();
-				mon_thr->log.log_current_time_message("forcing to stop process");
+				mon_thr->log_time_message("forcing to stop process");
 				break;
 
 			case WAIT_OBJECT_0+2:
-				if (!GetExitCodeProcess(mon_thr->proc_info.hProcess, &end_result)){
-					mon_thr->log.log_current_time_message("GetExitCodeProcess failed");
+				if (!mon_thr->get_exit_code_process(end_result)){
+					mon_thr->log_time_message("GetExitCodeProcess failed");
 					//temporary solution
 					throw(excepts("GetExitCodeProcess fail"));
 					break;
 				}
-				mon_thr->last_exit_code = end_result;
+				mon_thr->set_last_exit_code(end_result);
 				mon_thr->process_forse_stop(false);
 				switch(end_result){
 					case 0:
 						mon_thr->on_end();
-						mon_thr->log.log_current_time_message("process ended with code 0");
+						mon_thr->log_time_message("process ended with code 0");
 						break;
 					default:
 						mon_thr->on_crash();
-						mon_thr->log.log_current_time_message("process crashed with code - " + to_string(end_result));
-						mon_thr->rebooting = true;
+						mon_thr->log_time_message("process crashed with code - " + to_string(end_result));
+						check->rebooting = true;
 						if (!mon_thr->start_process()){
-							mon_thr->rebooting = false;
-							mon_thr->log.log_current_time_message("cannot start process");
-							mon_thr->monitoring = false;
+							check->rebooting = false;
+							mon_thr->log_time_message("cannot start process");
+							check->monitoring = false;
 							_endthreadex(1);
 						}
-						mon_thr->rebooting = false;
+						check->rebooting = false;
 				}
 				break;
 			case WAIT_FAILED:
-				mon_thr->log.log_current_time_message("WaitForMultipleObjects failed");
+				mon_thr->log_time_message("WaitForMultipleObjects failed");
 				break;
 		}
 	}
-	mon_thr->monitoring = false;
+	check->monitoring = false;
 	_endthreadex(0);
 	return 0;
 }
@@ -67,145 +73,6 @@ unsigned int _stdcall monitoring_function(void* ptr){
 //static variables initialisation
 unsigned int process_manager::handlers = 0;
 mutex process_manager::global_locker;
-
-//############
-//logger class
-//############
-logger::logger(){
-
-}
-
-logger::logger(logger&& l){
-	l.swap_locker.lock();
-
-	std::swap(log, l.log);
-
-	l.swap_locker.unlock();
-}
-
-logger::logger(const string& name){
-	log.open(name);
-}
-
-logger::~logger(){
-	if (log.is_open())
-		log.close();
-}
-
-logger& logger::operator=(logger&& l){
-	swap_locker.lock();
-	l.swap_locker.lock();
-
-	log.close();
-	std::swap(log, l.log);
-
-	l.swap_locker.unlock();
-	swap_locker.unlock();
-	return *this;
-}
-
-bool logger::open(const string& name){
-	swap_locker.lock();
-	locker.lock();
-	if (log.is_open()){
-		locker.unlock();
-		swap_locker.lock();
-		return false;
-	}
-	log.open(name);
-	locker.unlock();
-	swap_locker.unlock();
-	return true;
-}
-
-bool logger::is_open(){
-	swap_locker.lock();
-	locker.lock();
-	bool result = log.is_open();
-	locker.unlock();
-	swap_locker.unlock();
-	return result;
-}
-
-bool logger::close(bool lock){
-	swap_locker.lock();
-	if (lock)
-		locker.lock();
-	else if (!locker.try_lock()){
-		swap_locker.unlock();
-		return false;
-	}
-
-	if (log.is_open())
-		log.close();
-
-	locker.unlock();
-	swap_locker.unlock();
-	return true;
-}
-bool logger::log_current_time(bool lock, bool owned){
-	if (!owned)
-		if (lock)
-			locker.lock();
-		else if (!locker.try_lock())
-			return false;
-	swap_locker.lock();
-
-	time_t current_time = time(nullptr);
-	tm* t = localtime(&current_time);
-	log << t->tm_mday << "." << t->tm_mon + 1 << "." << t->tm_year + 1900 << " - " << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
-
-	swap_locker.unlock();
-	if (!owned)
-		locker.unlock();
-	return true;
-}
-
-bool logger::log_message(const string& message, bool lock){
-	if (lock)
-		locker.lock();
-	else if (!locker.try_lock())
-		return false;
-	swap_locker.lock();
-
-	log << message;
-	if (message[message.length() - 1] != '\n')
-		log << endl;
-
-	swap_locker.unlock();
-	locker.unlock();
-	return true;
-}
-
-bool logger::log_current_time_message(const string& message, bool lock){
-	if (lock)
-		locker.lock();
-	else if (!locker.try_lock())
-		return false;
-	swap_locker.lock();
-
-	time_t current_time = time(nullptr);
-	tm* t = localtime(&current_time);
-	log << t->tm_mday << "." << t->tm_mon + 1 << "." << t->tm_year + 1900 << " - " << t->tm_hour << ":" << t->tm_min << ":" << t->tm_sec << endl;
-	log << message;
-	if (message[message.length() - 1] != '\n')
-		log << endl;
-
-	swap_locker.unlock();
-	locker.unlock();
-	return true;
-}
-
-void swap(logger& _left, logger& _right){
-	_left.swap_locker.lock();
-	_right.swap_locker.lock();
-
-	std::swap(_left.log, _right.log);
-
-	_right.swap_locker.unlock();
-	_left.swap_locker.unlock();
-}
-
 
 //#######################
 //monitoring_thread class
@@ -332,14 +199,14 @@ bool monitoring_thread::start_process(){
 	}
 
 	proc_info = pinfo;
-
-	log.locker.lock();
+	ofstream& l = log.get_log();
+	log.lock_for_continious_writing();
 	log.log_current_time(true,true);
-	log.log << "Created process with id - " << proc_info.dwProcessId << endl;
-	log.log << "Hadle - " << proc_info.hProcess << endl;
-	log.log << "Main thread id - " << proc_info.dwThreadId << endl;
-	log.log << "Main thread handle - " << proc_info.hThread << endl;
-	log.locker.unlock();
+	l << "Created process with id - " << proc_info.dwProcessId << endl;
+	l << "Hadle - " << proc_info.hProcess << endl;
+	l << "Main thread id - " << proc_info.dwThreadId << endl;
+	l << "Main thread handle - " << proc_info.hThread << endl;
+	log.unlock();
 
 	while (ResumeThread(proc_info.hThread) > 0);
 

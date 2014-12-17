@@ -18,14 +18,12 @@
 #include <mutex>
 #include <functional>
 #include <string>
-#include <fstream>
-#include <ctime>
-
-
 #include <process.h>
 
+#include "logger.h"
 #include "my_win.h"
 #include "excepts.h"
+
 
 using namespace std;
 
@@ -36,55 +34,8 @@ unsigned int _stdcall monitoring_function(void* ptr);
 
 enum state {ended, rebooting, active};
 
-class logger{
-	friend class monitoring_thread;
-public:
-	logger();
-	logger(logger&& l);
-	logger(const string& name);
-	~logger();
-	logger& operator=(logger&& l);
-	friend void swap(logger& _left, logger& _right);
-
-	bool		open(const string& name);
-	bool		is_open();
-	operator bool(){ return is_open(); };
-	bool		close(bool lock = true);
-	
-	bool		log_current_time(bool lock = true, bool owned = true);
-	bool		log_message(const string& message, bool lock = true);
-	bool		log_current_time_message(const string& message, bool lock = true);
-
-	//unstable
-	void		lock_for_continious_writing(){ locker.lock(); };
-	//unstable
-	bool		try_lock_for_continious_writing(){ return locker.try_lock(); };
-	//unstable
-	void		unlock(){ locker.unlock(); };
-	
-	template<class T>
-	logger& operator<<(const T& msg){
-		swap_locker.lock();
-		locker.lock();
-		log << msg;
-		locker.unlock();
-		swap_locker.unlock();
-		return *this;
-	};
-	
-private:
-	//hide copy constructor
-	logger(const logger& l);
-	ofstream& get_log(){ return log; };
-	//for swap
-	ofstream	log;
-
-	//no swap
-	mutex		locker;
-	mutex		swap_locker;
-};
-
 class monitoring_thread{
+	friend class process_manager;
 public:
 	monitoring_thread();
 	~monitoring_thread();
@@ -93,10 +44,6 @@ public:
 	void					load_path_args(const wstring& path, const wstring& args);
 
 	void					resume_proc_main_thread();
-	void					on_start();
-	void					on_crash();
-	void					on_end();
-	void					on_force_stop();
 
 	bool					start_thread();
 	bool					terminate_thread();
@@ -107,6 +54,23 @@ public:
 
 	ofstream&				get_log(){ return log.get_log(); };
 
+	DWORD					wait_for_event(){ return WaitForMultipleObjects(3, &terminate_thread_event, FALSE, INFINITE); };
+	BOOL					get_exit_code_process(DWORD& end_result){ return GetExitCodeProcess(proc_info.hProcess, &end_result); };
+
+	DWORD					get_last_exit_code() { return last_exit_code; };
+	void					set_last_exit_code(DWORD& exit_code) { last_exit_code = exit_code; };
+
+	void					log_time_message(const string& msg){ log.log_current_time_message(msg); };
+
+	//events functions
+	void					on_start();
+	void					on_crash();
+	void					on_end();
+	void					on_force_stop();
+
+	bool					is_process_up(){ return process_up; };
+	
+private:
 	//variables
 	bool					process_up;
 	bool					rebooting;
@@ -126,9 +90,11 @@ public:
 	function<void()>		ProcEnded;
 	function<void()>		ProcManuallyStopped;
 	logger log;
-private:
+
 	bool					terminate_thread_unsafe();
 	bool					terminate_thread_safe();
+
+	//just for fun
 	DWORD					wait_time;
 };
 
@@ -158,18 +124,17 @@ public:
 	void					clear_process_info(bool lock = true);
 	void					full_clear(bool lock = true);
 
-	//testing
 	bool					open_process(DWORD id);
 
-	bool					load_on_proc_start_function(function<void()>& func, bool wait = false);
-	bool					load_on_proc_crash_function(function<void()>& func, bool wait = false);
-	bool					load_on_proc_end_function(function<void()>& func, bool wait = false);
-	bool					load_on_proc_manual_stop_function(function<void()>& func, bool wait = false);
+	bool					load_on_proc_start_function(function<void()>& func, bool wait = true);
+	bool					load_on_proc_crash_function(function<void()>& func, bool wait = true);
+	bool					load_on_proc_end_function(function<void()>& func, bool wait = true);
+	bool					load_on_proc_manual_stop_function(function<void()>& func, bool wait = true);
 
-	bool					reset_on_proc_start_function(bool wait = false);
-	bool					reset_on_proc_crash_function(bool wait = false);
-	bool					reset_on_proc_end_function(bool wait = false);
-	bool					reset_on_proc_manual_stop_function(bool wait = false);
+	bool					reset_on_proc_start_function(bool wait = true);
+	bool					reset_on_proc_crash_function(bool wait = true);
+	bool					reset_on_proc_end_function(bool wait = true);
+	bool					reset_on_proc_manual_stop_function(bool wait = true);
 
 	void					change_log(logger& l) { mon_thread.log = move(l); };
 

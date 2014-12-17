@@ -25,9 +25,9 @@ int main(){
 	process_manager proc1;
 	function<void()> f(func);
 	proc1.load_on_proc_start_function(f);
-	proc1.open_process(7828); //was using it on windows taskmanager 
+	proc1.open_process(8028); //was using it on windows taskmanager 
 	chrono::seconds t(5);
-	this_thread::sleep_for(t);
+//	this_thread::sleep_for(t);
 	proc1.reset_on_proc_start_function();
 	logger log("new.txt");
 	proc1.change_log(log);
